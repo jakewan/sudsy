@@ -5,13 +5,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "**/go.*"
-      - "**.go"
   pull_request:
-    paths:
-      - "**/go.*"
-      - "**.go"
 
 concurrency:
   group: static-checks-go-${{ github.ref }}
