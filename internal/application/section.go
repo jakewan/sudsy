@@ -53,13 +53,9 @@ type section struct {
 
 	rateLimitingHostCacheEntryIdleDuration time.Duration
 
-	rateLimitingHandler common.MiddlewareHandler
+	activeMiddlewareHandlers []common.MiddlewareHandler
 
 	rateLimitingConfigs []sectionRateLimitingConfig
-
-	basicAuthHandler common.MiddlewareHandler
-
-	sectionHandler common.MiddlewareHandler
 
 	root string
 
@@ -100,16 +96,16 @@ func (s *section) AddRateLimitingSessionConfig(maxRequests int64, sessionDuratio
 
 // AfterShutdown implements Section.
 func (s *section) AfterShutdown() {
-	s.sectionHandler.AfterShutdown()
-	s.basicAuthHandler.AfterShutdown()
-	s.rateLimitingHandler.AfterShutdown()
+	for _, h := range s.activeMiddlewareHandlers {
+		h.AfterShutdown()
+	}
 }
 
 // BeforeStart implements Section.
 func (s *section) BeforeStart(wg *sync.WaitGroup) {
-	s.rateLimitingHandler.BeforeStart(wg)
-	s.basicAuthHandler.BeforeStart(wg)
-	s.sectionHandler.BeforeStart(wg)
+	for i := len(s.activeMiddlewareHandlers) - 1; i >= 0; i-- {
+		s.activeMiddlewareHandlers[i].BeforeStart(wg)
+	}
 }
 
 // Root implements Section.
@@ -154,30 +150,42 @@ func (s *section) SetStatusTooManyRequestsHandlerFunc(h http.HandlerFunc) {
 
 func (s *section) NewHandler() http.Handler {
 	logger.Debug("", "Creating HTTP handler for %+v", s)
-	s.sectionHandler = newSectionHandler(
+	var outermost common.MiddlewareHandler
+	outermost = newSectionHandler(
 		s.newSectionHandlerDependencies(),
 		s.urlPathPatternHandlers,
 	)
-	s.basicAuthHandler = basicauth.NewMiddlewareHandler(
-		s.sectionHandler,
-		s.basicAuthUsername,
-		s.basicAuthPassword,
-		s.basicAuthRealm,
-	)
-	s.rateLimitingHandler = func() common.MiddlewareHandler {
-		h := ratelimiting.NewMiddlewareHandler(
-			s.newRateLimitingDependencies(),
-			s.basicAuthHandler,
+	s.activeMiddlewareHandlers = append(s.activeMiddlewareHandlers, outermost)
+	if s.basicAuthUsername != "" && s.basicAuthPassword != "" && s.basicAuthRealm != "" {
+		outermost = basicauth.NewMiddlewareHandler(
+			outermost,
+			s.basicAuthUsername,
+			s.basicAuthPassword,
+			s.basicAuthRealm,
 		)
-		for _, c := range s.rateLimitingConfigs {
-			h.AddSessionConfig(c.maxRequests, c.sessionDuration, c.banDuration)
-		}
-		if s.rateLimitingHostCacheEntryIdleDuration > 0 {
-			h.SetHostCacheEntryIdleDuration(s.rateLimitingHostCacheEntryIdleDuration)
-		}
-		return h
-	}()
-	return s.rateLimitingHandler
+		s.activeMiddlewareHandlers = append(s.activeMiddlewareHandlers, outermost)
+	} else {
+		logger.Debug("", "Basic auth not configured")
+	}
+	if len(s.rateLimitingConfigs) > 0 {
+		outermost = func() common.MiddlewareHandler {
+			h := ratelimiting.NewMiddlewareHandler(
+				s.newRateLimitingDependencies(),
+				outermost,
+			)
+			for _, c := range s.rateLimitingConfigs {
+				h.AddSessionConfig(c.maxRequests, c.sessionDuration, c.banDuration)
+			}
+			if s.rateLimitingHostCacheEntryIdleDuration > 0 {
+				h.SetHostCacheEntryIdleDuration(s.rateLimitingHostCacheEntryIdleDuration)
+			}
+			return h
+		}()
+		s.activeMiddlewareHandlers = append(s.activeMiddlewareHandlers, outermost)
+	} else {
+		logger.Debug("", "Rate limiting not configured")
+	}
+	return outermost
 }
 
 func (s *section) newRateLimitingDependencies() ratelimiting.Dependencies {
