@@ -21,10 +21,17 @@ var (
 type Application interface {
 	AddSection(Section) error
 	ListenAndServe()
+	SetServerListenPort(int)
 }
 
 type application struct {
-	sections []Section
+	sections         []Section
+	serverListenPort int
+}
+
+// SetServerListenPort implements Application.
+func (a *application) SetServerListenPort(port int) {
+	a.serverListenPort = port
 }
 
 func (a *application) AddSection(s Section) error {
@@ -49,7 +56,7 @@ func (a *application) ListenAndServe() {
 	}
 
 	httpServer := &http.Server{
-		Addr:        ":8080",
+		Addr:        fmt.Sprintf(":%d", a.serverListenPort),
 		Handler:     mux,
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
@@ -101,6 +108,7 @@ func (a *application) ListenAndServe() {
 
 func NewApplication() Application {
 	return &application{
-		sections: []Section{},
+		sections:         []Section{},
+		serverListenPort: 8080,
 	}
 }

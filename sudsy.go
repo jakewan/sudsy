@@ -94,9 +94,19 @@ func (a *applicationWrapper) ListenAndServe() {
 	a.application.ListenAndServe()
 }
 
-func NewApplication() Application {
-	return &applicationWrapper{
-		application: application.NewApplication(),
+type applicationOpt = func(application.Application)
+
+func NewApplication(opts ...applicationOpt) Application {
+	a := application.NewApplication()
+	for _, o := range opts {
+		o(a)
+	}
+	return &applicationWrapper{application: a}
+}
+
+func WithServerListenPort(port int) applicationOpt {
+	return func(a application.Application) {
+		a.SetServerListenPort(port)
 	}
 }
 
