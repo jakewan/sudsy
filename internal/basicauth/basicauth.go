@@ -29,6 +29,10 @@ func (h *handler) BeforeStart(*sync.WaitGroup) {}
 
 // ServeHTTP implements http.Handler.
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// CORS preflight requests exclude credentials.
+	if req.Method == "OPTIONS" {
+		h.next.ServeHTTP(w, req)
+	}
 	username, password, ok := req.BasicAuth()
 	if ok {
 		usernameHash := sha256.Sum256([]byte(username))
