@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -81,8 +80,6 @@ func (a *application) ListenAndServe() {
 	}
 
 	stop := func() {
-		log.Print("Inside stop function")
-
 		// Process anything the caller would like to do before shutting down.
 		for _, f := range a.beforeShutDownFuncs {
 			f()
@@ -105,13 +102,11 @@ func (a *application) ListenAndServe() {
 
 	// Run server.
 	go func() {
-		log.Print("Calling section BeforeStart functions")
 		// Start async processes.
 		var wg sync.WaitGroup
 		for _, s := range a.sections {
 			s.BeforeStart(&wg)
 		}
-		log.Print("Calling httpServer.ListenAndServe")
 
 		// Start the HTTP server.
 		err := httpServer.ListenAndServe()
@@ -120,19 +115,16 @@ func (a *application) ListenAndServe() {
 			logger.Debug("", "ListenAndServe responded with unexpected error: %s", err)
 			exitCode = 1
 		}
-		log.Print("Returned from httpServer.ListenAndServe")
 
 		// Stop async processess and wait for them to complete.
 		for _, s := range a.sections {
 			s.AfterShutdown()
 		}
 		wg.Wait()
-		log.Printf("After calling section AfterShutdown functions. Exit code is %d", exitCode)
 
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}
-		log.Print("Exiting normally")
 	}()
 
 	startedAt := time.Now()
@@ -140,7 +132,6 @@ func (a *application) ListenAndServe() {
 
 	// Block until the shutdown signal is received.
 	shutdown.GracefulStop(stop)
-	log.Print("Returned from shutdown.GracefulStop")
 }
 
 func NewApplication() Application {
