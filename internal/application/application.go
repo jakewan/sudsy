@@ -19,31 +19,27 @@ var (
 )
 
 type Application interface {
-	AddAfterShutdownFunc(f AfterShutdownFunc)
-	AddBeforeShutdownFunc(f BeforeShutdownFunc)
+	AddAfterShutdownFunc(f func())
+	AddBeforeShutdownFunc(f func())
 	AddSection(Section) error
 	ListenAndServe()
 	SetServerListenPort(int)
 }
 
-type AfterShutdownFunc func()
-
-type BeforeShutdownFunc func()
-
 type application struct {
-	afterShutDownFuncs  []AfterShutdownFunc
-	beforeShutDownFuncs []BeforeShutdownFunc
+	afterShutDownFuncs  []func()
+	beforeShutDownFuncs []func()
 	sections            []Section
 	serverListenPort    int
 }
 
 // AddAfterShutdownFunc implements Application.
-func (a *application) AddAfterShutdownFunc(f AfterShutdownFunc) {
+func (a *application) AddAfterShutdownFunc(f func()) {
 	a.afterShutDownFuncs = append(a.afterShutDownFuncs, f)
 }
 
 // AddBeforeShutdownFunc implements Application.
-func (a *application) AddBeforeShutdownFunc(f BeforeShutdownFunc) {
+func (a *application) AddBeforeShutdownFunc(f func()) {
 	a.beforeShutDownFuncs = append(a.beforeShutDownFuncs, f)
 }
 
@@ -136,8 +132,8 @@ func (a *application) ListenAndServe() {
 
 func NewApplication() Application {
 	return &application{
-		afterShutDownFuncs:  []AfterShutdownFunc{},
-		beforeShutDownFuncs: []BeforeShutdownFunc{},
+		afterShutDownFuncs:  []func(){},
+		beforeShutDownFuncs: []func(){},
 		sections:            []Section{},
 		serverListenPort:    8080,
 	}
