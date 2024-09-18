@@ -46,6 +46,12 @@ func WithPathPatternHandler(
 	}
 }
 
+func WithSimpleHandler(handler http.Handler) applicationSectionOpt {
+	return func(s application.Section) {
+		s.SetSimpleHandler(handler)
+	}
+}
+
 func WithRateLimitingHostCacheEntryIdleDuration(d time.Duration) applicationSectionOpt {
 	return func(s application.Section) {
 		s.SetRateLimitingHostCacheEntryIdleDuration(d)

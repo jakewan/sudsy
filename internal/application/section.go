@@ -25,6 +25,7 @@ type Section interface {
 	SetBasicAuthRealm(string)
 	SetBasicAuthUsername(string)
 	SetRateLimitingHostCacheEntryIdleDuration(time.Duration)
+	SetSimpleHandler(handler http.Handler)
 	SetStatusBadRequestHandlerFunc(HandlerFuncWithError)
 	SetStatusNotFoundHandlerFunc(http.HandlerFunc)
 	SetStatusTooManyRequestsHandlerFunc(http.HandlerFunc)
@@ -49,6 +50,8 @@ type section struct {
 
 	statusTooManyRequestsHandlerFunc http.HandlerFunc
 
+	simpleHandler http.Handler
+
 	urlPathPatternHandlers []urlpathpatternhandler.Handler
 
 	rateLimitingHostCacheEntryIdleDuration time.Duration
@@ -64,6 +67,14 @@ type section struct {
 	basicAuthPassword string
 
 	basicAuthRealm string
+}
+
+// SetSimpleHandler implements Section.
+func (s *section) SetSimpleHandler(handler http.Handler) {
+	if s.simpleHandler != nil {
+		panic("section simple handler already set")
+	}
+	s.simpleHandler = handler
 }
 
 // AddPathPatternHandler implements Section.
@@ -153,6 +164,7 @@ func (s *section) NewHandler() http.Handler {
 	var outermost common.MiddlewareHandler
 	outermost = newSectionHandler(
 		s.newSectionHandlerDependencies(),
+		s.simpleHandler,
 		s.urlPathPatternHandlers,
 	)
 	s.activeMiddlewareHandlers = append(s.activeMiddlewareHandlers, outermost)

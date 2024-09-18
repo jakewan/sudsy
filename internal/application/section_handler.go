@@ -15,6 +15,7 @@ type sectionHandlerDependencies struct {
 
 type sectionHandler struct {
 	deps                   sectionHandlerDependencies
+	simpleHandler          http.Handler
 	urlPathPatternHandlers []urlpathpatternhandler.Handler
 }
 
@@ -27,7 +28,9 @@ func (s *sectionHandler) BeforeStart(*sync.WaitGroup) {}
 // ServeHTTP implements http.Handler.
 func (s *sectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("", "Inside sectionHandler.ServeHTTP: %s", r.URL.Path)
-	if idx, found := slices.BinarySearchFunc(
+	if s.simpleHandler != nil {
+		s.simpleHandler.ServeHTTP(w, r)
+	} else if idx, found := slices.BinarySearchFunc(
 		s.urlPathPatternHandlers,
 		r.URL.Path,
 		urlpathpatternhandler.ComparePatternHandlerToPath,
@@ -47,9 +50,13 @@ func (s *sectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newSectionHandler(deps sectionHandlerDependencies, handlers []urlpathpatternhandler.Handler) common.MiddlewareHandler {
+func newSectionHandler(
+	deps sectionHandlerDependencies,
+	simpleHandler http.Handler,
+	urlPathHandlers []urlpathpatternhandler.Handler) common.MiddlewareHandler {
 	return &sectionHandler{
 		deps:                   deps,
-		urlPathPatternHandlers: handlers,
+		simpleHandler:          simpleHandler,
+		urlPathPatternHandlers: urlPathHandlers,
 	}
 }
