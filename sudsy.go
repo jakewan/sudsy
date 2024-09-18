@@ -116,6 +116,22 @@ func WithServerListenPort(port int) applicationOpt {
 	}
 }
 
+// WithAfterShutdownFunc adds a function that will be called after the HTTP server
+// shuts down.
+func WithAfterShutdownFunc(f func()) applicationOpt {
+	return func(a application.Application) {
+		a.AddAfterShutdownFunc(f)
+	}
+}
+
+// WithBeforeShutdownFunc adds a function that will be called before the HTTP server
+// shuts down.
+func WithBeforeShutdownFunc(f func()) applicationOpt {
+	return func(a application.Application) {
+		a.AddBeforeShutdownFunc(f)
+	}
+}
+
 type applicationSectionDependencies struct{}
 
 // Now implements application.SectionDependencies.

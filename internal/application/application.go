@@ -19,14 +19,28 @@ var (
 )
 
 type Application interface {
+	AddAfterShutdownFunc(f func())
+	AddBeforeShutdownFunc(f func())
 	AddSection(Section) error
 	ListenAndServe()
 	SetServerListenPort(int)
 }
 
 type application struct {
-	sections         []Section
-	serverListenPort int
+	afterShutdownFuncs  []func()
+	beforeShutdownFuncs []func()
+	sections            []Section
+	serverListenPort    int
+}
+
+// AddAfterShutdownFunc implements Application.
+func (a *application) AddAfterShutdownFunc(f func()) {
+	a.afterShutdownFuncs = append(a.afterShutdownFuncs, f)
+}
+
+// AddBeforeShutdownFunc implements Application.
+func (a *application) AddBeforeShutdownFunc(f func()) {
+	a.beforeShutdownFuncs = append(a.beforeShutdownFuncs, f)
 }
 
 // SetServerListenPort implements Application.
@@ -62,6 +76,11 @@ func (a *application) ListenAndServe() {
 	}
 
 	stop := func() {
+		// Process anything the caller would like to do before shutting down.
+		for _, f := range a.beforeShutdownFuncs {
+			f()
+		}
+
 		gracefulCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -69,6 +88,11 @@ func (a *application) ListenAndServe() {
 			logger.Debug("", "shutdown error: %v", err)
 		} else {
 			logger.Debug("", "gracefully stopped")
+		}
+
+		// Process anything the caller would like to do after shutting down.
+		for _, f := range a.afterShutdownFuncs {
+			f()
 		}
 	}
 
@@ -108,7 +132,9 @@ func (a *application) ListenAndServe() {
 
 func NewApplication() Application {
 	return &application{
-		sections:         []Section{},
-		serverListenPort: 8080,
+		afterShutdownFuncs:  []func(){},
+		beforeShutdownFuncs: []func(){},
+		sections:            []Section{},
+		serverListenPort:    8080,
 	}
 }
