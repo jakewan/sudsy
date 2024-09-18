@@ -27,20 +27,20 @@ type Application interface {
 }
 
 type application struct {
-	afterShutDownFuncs  []func()
-	beforeShutDownFuncs []func()
+	afterShutdownFuncs  []func()
+	beforeShutdownFuncs []func()
 	sections            []Section
 	serverListenPort    int
 }
 
 // AddAfterShutdownFunc implements Application.
 func (a *application) AddAfterShutdownFunc(f func()) {
-	a.afterShutDownFuncs = append(a.afterShutDownFuncs, f)
+	a.afterShutdownFuncs = append(a.afterShutdownFuncs, f)
 }
 
 // AddBeforeShutdownFunc implements Application.
 func (a *application) AddBeforeShutdownFunc(f func()) {
-	a.beforeShutDownFuncs = append(a.beforeShutDownFuncs, f)
+	a.beforeShutdownFuncs = append(a.beforeShutdownFuncs, f)
 }
 
 // SetServerListenPort implements Application.
@@ -77,7 +77,7 @@ func (a *application) ListenAndServe() {
 
 	stop := func() {
 		// Process anything the caller would like to do before shutting down.
-		for _, f := range a.beforeShutDownFuncs {
+		for _, f := range a.beforeShutdownFuncs {
 			f()
 		}
 
@@ -91,7 +91,7 @@ func (a *application) ListenAndServe() {
 		}
 
 		// Process anything the caller would like to do after shutting down.
-		for _, f := range a.afterShutDownFuncs {
+		for _, f := range a.afterShutdownFuncs {
 			f()
 		}
 	}
@@ -132,8 +132,8 @@ func (a *application) ListenAndServe() {
 
 func NewApplication() Application {
 	return &application{
-		afterShutDownFuncs:  []func(){},
-		beforeShutDownFuncs: []func(){},
+		afterShutdownFuncs:  []func(){},
+		beforeShutdownFuncs: []func(){},
 		sections:            []Section{},
 		serverListenPort:    8080,
 	}
